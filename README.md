@@ -1,2 +1,0 @@
-# ScreenShare
-This project is 
