@@ -64,163 +64,17 @@ void TcpServer::init()
 	}
 }
 
-int TcpServer::sendMessage(const unsigned char *buffer_void, uint64_t buffer_size, int sockfd)
-{
-	const unsigned char *buffer = buffer_void;
-
-	/* default is success */
-	int retval = 0;
-
-	/* how many bytes remains to be written */
-	size_t remaining = buffer_size;
-
-	/* repeat until all data is written */
-	while (remaining > 0)
-	{
-		fd_set write_fd;
-		int selret;
-
-		FD_ZERO(&write_fd);
-		FD_SET(sockfd, &write_fd);
-
-		selret = select(sockfd + 1, NULL, &write_fd, NULL, NULL);
-
-		/* try to write only when the file descriptor is writable */
-		if (selret > 0)
-		{
-			int written;
-
-			if (!FD_ISSET(sockfd, &write_fd))
-			{
-				/* very strange situation. it should be an assert really */
-				retval = -1;
-				break;
-			}
-			/* since we are a user library we can't play with signals
-			 * The signals may already be used by the application */
-			/* Get EPIPE return code instead of SIGPIPE signal
-			 * Works on Linux */
-			written = send(sockfd, buffer, remaining, MSG_NOSIGNAL);
-
-			if (written > 0)
-			{
-				/* we wrote something */
-				buffer += written;
-				remaining -= written;
-			} else if (written == 0)
-			{
-				/* peer closed the socket */
-				retval = -1;
-				break;
-			} else
-			{
-				/* we ignore the signals and socket full situations, all
-				 * other errors are fatal */
-				if (errno != EINTR && errno != EAGAIN)
-				{
-					retval = -1;
-					break;
-				}
-			}
-		} else if (selret == 0)
-		{
-			/* timeout */
-			retval = -2;
-			break;
-		} else
-		{
-			/* ignore signals */
-			if (errno != EINTR)
-			{
-				printf("select returns with failure: %s\n",
-					strerror(errno));
-				retval = -1;
-				break;
-			}
-		}
-	}
-
-	return retval;
-}
-
-int TcpServer::recvMessage(void *buffer_void, uint64_t buffer_size, int sockfd)
-{
-	char *buffer = (char *)buffer_void;
-
-	/* default is success */
-	int retval = 0;
-
-	/* how many bytes we must read */
-	size_t remaining = buffer_size;
-
-	/* repeat until we get the whole message */
-	while (remaining > 0)
-	{
-		fd_set read_fd;
-		int selret;
-
-		FD_ZERO(&read_fd);
-		FD_SET(sockfd, &read_fd);
-
-		selret = select(sockfd + 1, &read_fd, NULL, NULL, NULL);
-
-		/* try to read only when socket is readable */
-		if (selret > 0)
-		{
-			int readed;
-
-			if (!FD_ISSET(sockfd, &read_fd))
-			{
-				/* very strange situation. it should be an assert really */
-				retval = -1;
-				break;
-			}
-			readed = read(sockfd, buffer, remaining);
-
-			if (readed > 0)
-			{
-				/* we got something */
-				buffer += readed;
-				remaining -= readed;
-			} else if (readed == 0)
-			{
-				/* peer closed the socket */
-				retval = 1;
-				break;
-			} else
-			{
-				/* we ignore the signals and empty socket situations, all
-				 * other errors are fatal */
-				if (errno != EINTR && errno != EAGAIN)
-				{
-					retval = -1;
-					break;
-				}
-			}
-		}
-		else
-		{
-			/* we ignore signals, all other errors are fatal */
-			if (errno != EINTR)
-			{
-				retval = -1;
-				break;
-			}
-		}
-	}
-
-	return retval;
-}
-
 //add client to correct screenserver based on class id
 void TcpServer::addClient2Server(ScreenClient *client)
 {
 	uint32_t client_cid = client->getCId();
+	printf("Cliend cid = %d\n", client_cid);
 
 	vector<ScreenServer *>::iterator it;
 	for (it = mScreenServers.begin(); it != mScreenServers.end(); it++)
 	{
 		uint32_t server_cid = (*it)->getCId();
+		printf("server cid = %d\n", server_cid);
 		if (client_cid == server_cid) {
 			(*it)->addClient(client);
 		}
@@ -254,7 +108,7 @@ void TcpServer::connectionHandlerLoop()
 				printf("new connection created\n");
 
 				int res = recvMessage(buffer, 12, sockfd);
-				if (res < 0) {
+				if (res != 12) {
 					printf("recv Message failed\n");
 					exit(-1);
 				}
@@ -266,6 +120,7 @@ void TcpServer::connectionHandlerLoop()
 					//this connection is from screenserver, so we create a screenserver instance here.
 					ScreenServer *instance = new ScreenServer(sockfd, id, cid);
 					mScreenServers.push_back(instance);
+					//res = sendMessage();
 				} else if (side_type == SCREENCLIENT) {
 					ScreenClient *instance = new ScreenClient(sockfd, id, cid);
 					addClient2Server(instance);

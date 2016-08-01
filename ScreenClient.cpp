@@ -6,7 +6,7 @@ ScreenClient::ScreenClient(int sock, uint32_t id, uint32_t cid):
 	mId(id),
 	mCId(cid)
 {
-	printf("a new ScreenServer created\n");
+	printf("a new ScreenClient created\n");
 }
 
 ScreenClient::~ScreenClient()
@@ -16,4 +16,9 @@ ScreenClient::~ScreenClient()
 uint32_t ScreenClient::getCId()
 {
 	return mCId;
+}
+
+int ScreenClient::getSock()
+{
+	return mSockfd;
 }

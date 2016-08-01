@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include "BaseSocket.h"
 
 using namespace std;
 
@@ -19,7 +20,7 @@ using namespace std;
 class ScreenServer;
 class ScreenClient;
 
-class TcpServer{
+class TcpServer : public BaseSocket{
 public:
 	TcpServer();
 	~TcpServer();
@@ -31,8 +32,8 @@ private:
 	void connectionHandlerLoop();
 	void parseSideType(uint8_t *buffer,  uint32_t length, uint32_t & side_type, uint32_t & id, uint32_t & cid);
 	void addClient2Server(ScreenClient *client);
-	int sendMessage(const unsigned char *buffer_void, uint64_t buffer_size, int sockfd);
-	int recvMessage(void *buffer_void, uint64_t buffer_size, int sockfd);
+	//int sendMessage(const unsigned char *buffer_void, uint64_t buffer_size, int sockfd);
+	//int recvMessage(void *buffer_void, uint64_t buffer_size, int sockfd);
 private:
 	vector<ScreenServer *> mScreenServers;
 	int mSocketfd;
