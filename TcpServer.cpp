@@ -68,15 +68,18 @@ void TcpServer::init()
 void TcpServer::addClient2Server(ScreenClient *client)
 {
 	uint32_t client_cid = client->getCId();
-	printf("Cliend cid = %d\n", client_cid);
+	printf("Cliend cid = %u\n", client_cid);
 
+	
 	vector<ScreenServer *>::iterator it;
 	for (it = mScreenServers.begin(); it != mScreenServers.end(); it++)
 	{
-		uint32_t server_cid = (*it)->getCId();
+		//printf("screenserver = %p\n", (*it));
+		ScreenServer *pServer = (*it);
+		uint32_t server_cid = pServer->getCId();
 		printf("server cid = %d\n", server_cid);
 		if (client_cid == server_cid) {
-			(*it)->addClient(client);
+			pServer->addClient(client);
 		}
 	}
 	
@@ -120,6 +123,9 @@ void TcpServer::connectionHandlerLoop()
 					//this connection is from screenserver, so we create a screenserver instance here.
 					ScreenServer *instance = new ScreenServer(sockfd, id, cid);
 					mScreenServers.push_back(instance);
+					printf("size of screenservers = %ld\n", mScreenServers.size());
+					ScreenServer * p = mScreenServers[0];
+					printf("cid = %d\n", p->getCId());
 					//res = sendMessage();
 				} else if (side_type == SCREENCLIENT) {
 					ScreenClient *instance = new ScreenClient(sockfd, id, cid);

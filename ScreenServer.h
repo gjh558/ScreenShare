@@ -3,10 +3,14 @@
 
 #include <stdint.h>
 #include <vector>
+#include <queue>
 #include "BaseSocket.h"
 
 using namespace std;
 
+#define CACHE_FRAME_NUM 30
+
+class Frame;
 class ScreenClient;
 
 class ScreenServer : public BaseSocket {
@@ -17,7 +21,9 @@ public:
 	uint32_t getCId();
 	void addClient(ScreenClient *client);
 	void startReceiveLoop();
+	void startSendLoop();
 	static void *receiveLoop(void *);
+	static void *sendLoop(void *);
 private:
 	void startThread();
 	int parseHeader(uint8_t *header);
@@ -27,6 +33,7 @@ private:
 	uint32_t mCId;
 	uint8_t *pBuffer;
 	vector<ScreenClient *> mScreenClients;
+	queue<Frame *> mFrames;
 };
 
 #endif

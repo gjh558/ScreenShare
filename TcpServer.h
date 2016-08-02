@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <vector>
 #include "BaseSocket.h"
+#include "ScreenServer.h"
 
 using namespace std;
 
@@ -17,7 +18,7 @@ using namespace std;
  * TcpServer is responsible for accept connection from ScreenServer. (maybe also ScreenClient if use TCP)
  * There is only one TcpServer instance int the process.
  */
-class ScreenServer;
+//class ScreenServer;
 class ScreenClient;
 
 class TcpServer : public BaseSocket{
