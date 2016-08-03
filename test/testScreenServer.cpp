@@ -34,7 +34,9 @@ int main(int argc, char **argv)
     char sendline[100];
     memcpy(sendline, (char *)ss, sizeof(ss));
 
-    write(sockfd, sendline, 12);
+    send(sockfd, sendline, 12, 0);
+    int len = recv(sockfd, sendline, 4, 0);
+    printf("recv lenth = %d\n", len);
 
     char sendBuffer[1024 * 10];
     uint64_t length ;
@@ -46,7 +48,7 @@ int main(int argc, char **argv)
 
                 break;
         }
-        write(sockfd, (uint8_t *)&length, sizeof(uint64_t));
+        write(sockfd, (uint8_t *)&length, sizeof(uint32_t));
 
 		write(sockfd, sendBuffer, length);
 	}

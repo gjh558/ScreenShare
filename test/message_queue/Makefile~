@@ -1,0 +1,9 @@
+CC := gcc
+CFLAGS += -w -g -O -O2 -O3 -o
+RM := rm -rf *~
+
+all:
+	$(CC) $(CFLAGS) semaphore semaphore.c
+	$(CC) $(CFLAGS) semaphore_mutex semaphore_mutex.c -D__TIME_WAIT__#-D__NO_WAIT__#-D__WAIT__
+clean:
+	$(RM)

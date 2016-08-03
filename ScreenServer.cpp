@@ -6,6 +6,7 @@
 #include "ScreenServer.h"
 #include "ScreenClient.h"
 #include "Frame.h"
+#include "msg.h"
 
 #define DEBUG 1
 
@@ -42,11 +43,11 @@ void ScreenServer::startThread()
 		exit(-1);
 	}
 
-	ret = pthread_create(&tid2, NULL, sendLoop, this);
-	if (ret != 0) {
-		printf("create screen  server send thread failed: %s\n", strerror(errno));
-		exit(-1);
-	}
+	// ret = pthread_create(&tid2, NULL, sendLoop, this);
+	// if (ret != 0) {
+	// 	printf("create screen  server send thread failed: %s\n", strerror(errno));
+	// 	exit(-1);
+	// }
 }
 
 void ScreenServer::startSendLoop()
@@ -81,6 +82,7 @@ void ScreenServer::startSendLoop()
 void ScreenServer::startReceiveLoop()
 {
 	printf("screen server thread started\n");
+	Message m;
 	while (1) {
 		//recv header
 		//int ret = recvMessage(header, 8, pInstance->mSockfd);
@@ -91,7 +93,7 @@ void ScreenServer::startReceiveLoop()
 
 		//parseHeader
 		//recv payload
-		uint32_t length = 0;
+		uint32_t length;
 		int ret = recvMessage((uint8_t *) &length, sizeof(uint32_t), mSockfd);
 
 		if (ret != sizeof(uint32_t)) {
@@ -111,14 +113,19 @@ void ScreenServer::startReceiveLoop()
 		// 	fwrite(pBuffer, length, 1, fp);
 		// #endif
 
-		if (mFrames.size() < CACHE_FRAME_NUM) {
-			Frame *aFrame = new Frame(pBuffer, length);
-			mFrames.push(aFrame);
-		} else {
-			mFrames.pop();
-			Frame *aFrame = new Frame(pBuffer, length);
-			mFrames.push(aFrame);
-		}
+		printf("send to rtsp server\n");
+		m.m_type = 1;
+		memcpy(m.m_text, (char *)&length, sizeof(uint32_t));
+		memcpy(m.m_text + sizeof(uint32_t), pBuffer, length);
+		::messageQueueSend(&m);
+		// if (mFrames.size() < CACHE_FRAME_NUM) {
+		// 	Frame *aFrame = new Frame(pBuffer, length);
+		// 	mFrames.push(aFrame);
+		// } else {
+		// 	mFrames.pop();
+		// 	Frame *aFrame = new Frame(pBuffer, length);
+		// 	mFrames.push(aFrame);
+		// }
 
 		//send to client
 		// if (mScreenClients.size() > 0) {

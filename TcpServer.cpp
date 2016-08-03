@@ -125,8 +125,8 @@ void TcpServer::connectionHandlerLoop()
 					//this connection is from screenserver, so we create a screenserver instance here.
 					ScreenServer *instance = new ScreenServer(sockfd, id, cid);
 					mScreenServers.push_back(instance);
-					printf("size of screenservers = %ld\n", mScreenServers.size());
-					ScreenServer * p = mScreenServers[0];
+					//printf("size of screenservers = %ld\n", mScreenServers.size());
+					//ScreenServer * p = mScreenServers[0];
 					uint32_t status = SUCCESS;
 					res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
 

@@ -1,0 +1,81 @@
+#include "msg.h"
+
+int msgid = -1;
+
+void sig_catch_int(int signo)
+{
+	psignal(signo, "Catch signal");
+	
+	if (msgctl(msgid, IPC_RMID, NULL) == -1)
+	{
+		err_sys("server msgctl")
+	}
+
+	signal(SIGINT, sig_catch_int);
+}
+
+
+int main (int argc, char *argv[])
+{
+	key_t key = -1;
+	
+	key = ftok(KEY_NAME, 1);
+	if (key == -1)
+	{
+		err_sys("ftok")
+	}
+
+	
+
+	signal(SIGINT, sig_catch_int);
+
+	msgid = msgget(key, IPC_CREAT | IPC_EXCL | 0666);
+	if (msgid == -1)
+	{
+		if (errno != EEXIST)
+		{
+			err_sys("server msgget")
+		}
+		else
+		{
+			msgid = msgget(key, IPC_EXCL);
+		}
+		
+	}
+	
+	msgbuf_struct msg_buf;
+	msg_buf.m_type = 1;
+
+	size_t rc = -1;
+	while (RUNNING)
+	{
+		memset(msg_buf.m_text, '\0', MSG_SIZE);
+		
+		rc = msgrcv(msgid, &msg_buf, MSG_STRUCT_SIZE, msg_buf.m_type, 0);
+		if (rc == -1)
+		{
+			if (msgctl(msgid, IPC_RMID, NULL) == -1)
+			{
+				err_sys("server msgctl")
+			}
+			err_sys("server msgrcv")
+		}
+
+		msg_buf.m_text[MSG_SIZE - 1] = '\0';
+		if (! strncasecmp(msg_buf.m_text, "quit"))
+		{
+			printf("server exit\n");
+			if (msgctl(msgid, IPC_RMID, NULL) == -1)
+			{
+				err_sys("server msgctl")
+			}
+		}
+		else
+		{
+			msg_buf.m_text[MSG_SIZE - 1] = '\0';
+			printf("server-->> %s\n", msg_buf.m_text);
+		}
+	}//while (RUNNING)
+
+	exit(EXIT_SUCCESS);
+}
