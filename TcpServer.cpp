@@ -65,7 +65,7 @@ void TcpServer::init()
 }
 
 //add client to correct screenserver based on class id
-void TcpServer::addClient2Server(ScreenClient *client)
+int TcpServer::addClient2Server(ScreenClient *client)
 {
 	uint32_t client_cid = client->getCId();
 	printf("Cliend cid = %u\n", client_cid);
@@ -80,9 +80,11 @@ void TcpServer::addClient2Server(ScreenClient *client)
 		printf("server cid = %d\n", server_cid);
 		if (client_cid == server_cid) {
 			pServer->addClient(client);
+			return 0;
 		}
 	}
 	
+	return -1;
 }
 
 void TcpServer::parseSideType(uint8_t *buffer,  uint32_t length, uint32_t & side_type, uint32_t & id, uint32_t & cid)
@@ -125,11 +127,20 @@ void TcpServer::connectionHandlerLoop()
 					mScreenServers.push_back(instance);
 					printf("size of screenservers = %ld\n", mScreenServers.size());
 					ScreenServer * p = mScreenServers[0];
-					printf("cid = %d\n", p->getCId());
-					//res = sendMessage();
+					uint32_t status = SUCCESS;
+					res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+
 				} else if (side_type == SCREENCLIENT) {
 					ScreenClient *instance = new ScreenClient(sockfd, id, cid);
-					addClient2Server(instance);
+					res = addClient2Server(instance);
+					if (res < 0) {
+						uint32_t status = FAILED;
+						res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+						close(sockfd);
+					} else {
+						uint32_t status = SUCCESS;
+						res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+					}
 				}
 				
 			}else {

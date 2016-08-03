@@ -8,7 +8,7 @@
 
 using namespace std;
 
-#define CACHE_FRAME_NUM 30
+#define CACHE_FRAME_NUM 25
 
 class Frame;
 class ScreenClient;

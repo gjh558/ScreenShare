@@ -13,6 +13,8 @@ using namespace std;
 
 #define SCREENSERVER 1
 #define SCREENCLIENT 2
+#define SUCCESS	0
+#define FAILED	1
 
 /*
  * TcpServer is responsible for accept connection from ScreenServer. (maybe also ScreenClient if use TCP)
@@ -32,7 +34,7 @@ private:
 	void init();
 	void connectionHandlerLoop();
 	void parseSideType(uint8_t *buffer,  uint32_t length, uint32_t & side_type, uint32_t & id, uint32_t & cid);
-	void addClient2Server(ScreenClient *client);
+	int addClient2Server(ScreenClient *client);
 	//int sendMessage(const unsigned char *buffer_void, uint64_t buffer_size, int sockfd);
 	//int recvMessage(void *buffer_void, uint64_t buffer_size, int sockfd);
 private:

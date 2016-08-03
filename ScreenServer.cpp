@@ -107,14 +107,30 @@ void ScreenServer::startReceiveLoop()
 			break;
 		}
 		//printf("recv frome server %s\n", pBuffer);
-		#ifdef DEBUG
-			fwrite(pBuffer, length, 1, fp);
-		#endif
+		// #ifdef DEBUG
+		// 	fwrite(pBuffer, length, 1, fp);
+		// #endif
 
 		if (mFrames.size() < CACHE_FRAME_NUM) {
 			Frame *aFrame = new Frame(pBuffer, length);
 			mFrames.push(aFrame);
+		} else {
+			mFrames.pop();
+			Frame *aFrame = new Frame(pBuffer, length);
+			mFrames.push(aFrame);
 		}
+
+		//send to client
+		// if (mScreenClients.size() > 0) {
+		// 	printf("send to client\n");
+		// 	//char buf[] = "hello";
+		// 	vector<ScreenClient *>::iterator it;
+		// 	for (it = mScreenClients.begin(); it != mScreenClients.end(); it++){
+		// 		ScreenClient *pClient = *it;
+		// 		pClient->sendMessage((uint8_t *) &length, sizeof(uint32_t), pClient->getSock());
+		// 		pClient->sendMessage(pBuffer, length, pClient->getSock());
+		// 	}
+		// }
 		
 	}
 
