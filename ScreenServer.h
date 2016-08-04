@@ -6,6 +6,11 @@
 #include <queue>
 #include "BaseSocket.h"
 
+#include <liveMedia.hh>
+#include <BasicUsageEnvironment.hh>
+#include <GroupsockHelper.hh>
+#include "RTSPSource.h"
+
 using namespace std;
 
 #define CACHE_FRAME_NUM 25
@@ -24,6 +29,8 @@ public:
 	void startSendLoop();
 	static void *receiveLoop(void *);
 	static void *sendLoop(void *);
+
+	int getSockfd();
 private:
 	void startThread();
 	int parseHeader(uint8_t *header);
@@ -34,6 +41,14 @@ private:
 	uint8_t *pBuffer;
 	vector<ScreenClient *> mScreenClients;
 	queue<Frame *> mFrames;
+
+private:
+	UsageEnvironment* env;
+	H264VideoStreamFramer* videoSource;
+	RTPSink* videoSink;
+
+	void play();
+	void afterPlaying(void* /*clientData*/);
 };
 
 #endif

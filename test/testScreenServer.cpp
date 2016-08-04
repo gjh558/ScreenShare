@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     uint64_t length ;
 
 	while (1) {
-		usleep(1000 * 200);
-        length = fread(sendBuffer, 1, 1024 * 10, fp);
+		usleep(1000 * 10);
+        length = fread(sendBuffer, 1, 1024 * 4, fp);
         if (length <= 0) {
 
                 break;
