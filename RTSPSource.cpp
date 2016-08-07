@@ -12,9 +12,12 @@
 
 //static uint8_t *bufPtr = buf;
 
+static FILE *fp;
+
 myDeviceSource*
 myDeviceSource::createNew(UsageEnvironment& env, ScreenServer *server)
 {
+  fp = fopen("out.h264", "w+");
   return new myDeviceSource(env, server);
 }
 
@@ -51,29 +54,50 @@ myDeviceSource::~myDeviceSource(void) {
   }
 }
 
+void myDeviceSource::stopRTSPServer()
+{
+  pScreenServer->watchVal[0] = 1;
+}
+
+unsigned myDeviceSource::maxFrameSize() const
+{
+  return 102400;
+}
+
 int loop_count;
 
 void myDeviceSource::doGetNextFrame() 
 {
-	printf("get next frame\n");
+  printf("get next frame\n");
+  int ret;
+  //ret = pScreenServer->recvMessage((uint8_t *) &mFrameLength, sizeof(uint32_t), pScreenServer->getSockfd());
 
-  int ret = pScreenServer->recvMessage((uint8_t *) &mFrameLength, sizeof(uint32_t), pScreenServer->getSockfd());
+  // if (ret != sizeof(uint32_t)) {
+  //   printf("recv video length from screen server failed\n");
+  //   stopRTSPServer();
+  //   return;
+  // }
+  //printf("recv length = %d\n", mFrameLength);
 
-  if (ret != sizeof(uint32_t)) {
-    printf("recv video length from screen server failed\n");
-    return;
-  }
-  printf("recv length = %d\n", mFrameLength);
+  // ret = pScreenServer->recvMessage((uint8_t *) &mFramePts, sizeof(uint32_t), pScreenServer->getSockfd());
+  // if (ret != sizeof(uint32_t)) {
+  //   printf("recv video pts from screen server failed\n");
+  //   return;
+  // }
+  // printf("recv pts = %d\n", mFramePts);
 
-  ret = pScreenServer->recvMessage(mFrameData, mFrameLength, pScreenServer->getSockfd());
-  if (ret != mFrameLength)
+  ret = pScreenServer->recvMessage(mFrameData, 2048, pScreenServer->getSockfd());
+  if (ret != 2048)
   {
     printf("recv video data from screen server failed\n");
+    stopRTSPServer();
     return;
   }
 
+  mFrameLength = ret;
+  printf("mFrameLength = %d\n", mFrameLength);
+  //fwrite(mFrameData, mFrameLength, 1, fp);
   deliverFrame();
-  
 }
 
 void myDeviceSource::deliverFrame0(void* clientData) 
@@ -90,11 +114,13 @@ void myDeviceSource::deliverFrame()
 
   // Deliver the data here:
   if (newFrameSize > fMaxSize) {
+    printf("#######################some error happened\n");
     fFrameSize = fMaxSize;
     fNumTruncatedBytes = newFrameSize - fMaxSize;
   } else {
     fFrameSize = newFrameSize;
   }
+  //fDurationInMicroseconds = 20;
   gettimeofday(&fPresentationTime, NULL); 
   memmove(fTo, newFrameDataStart, fFrameSize);
   FramedSource::afterGetting(this);

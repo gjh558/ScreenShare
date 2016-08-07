@@ -31,6 +31,8 @@ public:
 	static void *sendLoop(void *);
 
 	int getSockfd();
+
+	volatile char watchVal[1];
 private:
 	void startThread();
 	int parseHeader(uint8_t *header);
@@ -46,6 +48,7 @@ private:
 	UsageEnvironment* env;
 	H264VideoStreamFramer* videoSource;
 	RTPSink* videoSink;
+	myDeviceSource* devSource;
 
 	void play();
 	void afterPlaying(void* /*clientData*/);

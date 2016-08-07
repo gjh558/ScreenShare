@@ -22,13 +22,14 @@ ScreenServer::ScreenServer(int sock, uint32_t id, uint32_t cid):
 	#ifdef DEBUG
 		fp = fopen("test.h264", "w+");
 	#endif
-
+	watchVal[0] = 0;
 	pBuffer = new uint8_t[1024 *  1024];
 	startThread();
 }
 
 ScreenServer::~ScreenServer()
 {
+	close(mSockfd);
 	delete[] pBuffer;
 }
 
@@ -42,8 +43,8 @@ void ScreenServer::startThread()
 	int ret;
 	pthread_t tid1, tid2;
 
-	// ret = pthread_create(&tid1, NULL, receiveLoop, this);
-	// if (ret != 0) {
+	//ret = pthread_create(&tid1, NULL, receiveLoop, this);
+	//if (ret != 0) {
 	// 	printf("create screen  server recv thread failed: %s\n", strerror(errno));
 	// 	exit(-1);
 	// }
@@ -59,7 +60,6 @@ void ScreenServer::startSendLoop()
 {
 
 		// if (mFrames.size() > 0 && mScreenClients.size() > 0) {
-			
 		// 		Frame *pFrame = mFrames.front();
 		// 		mFrames.pop();
 		// 		vector<ScreenClient *>::iterator it;
@@ -82,66 +82,92 @@ void ScreenServer::startSendLoop()
 		// }
 
 		// Begin by setting up our usage environment:
-  TaskScheduler* scheduler = BasicTaskScheduler::createNew();
-  env = BasicUsageEnvironment::createNew(*scheduler);
+	TaskScheduler* scheduler = BasicTaskScheduler::createNew();
+	env = BasicUsageEnvironment::createNew(*scheduler);
 
-  // Create 'groupsocks' for RTP and RTCP:
-  struct in_addr destinationAddress;
-  destinationAddress.s_addr = chooseRandomIPv4SSMAddress(*env);
-  // Note: This is a multicast address.  If you wish instead to stream
-  // using unicast, then you should use the "testOnDemandRTSPServer"
-  // test program - not this test program - as a model.
+	// Create 'groupsocks' for RTP and RTCP:
+	struct in_addr destinationAddress;
+	destinationAddress.s_addr = chooseRandomIPv4SSMAddress(*env);
+	// Note: This is a multicast address.  If you wish instead to stream
+	// using unicast, then you should use the "testOnDemandRTSPServer"
+	// test program - not this test program - as a model.
 
-  const unsigned short rtpPortNum = 18888;
-  const unsigned short rtcpPortNum = rtpPortNum+1;
-  const unsigned char ttl = 255;
+	const unsigned short rtpPortNum = 18888;
+	const unsigned short rtcpPortNum = rtpPortNum+1;
+	const unsigned char ttl = 255;
 
-  const Port rtpPort(rtpPortNum);
-  const Port rtcpPort(rtcpPortNum);
+	const Port rtpPort(rtpPortNum);
+	const Port rtcpPort(rtcpPortNum);
 
-  Groupsock rtpGroupsock(*env, destinationAddress, rtpPort, ttl);
-  rtpGroupsock.multicastSendOnly(); // we're a SSM source
-  Groupsock rtcpGroupsock(*env, destinationAddress, rtcpPort, ttl);
-  rtcpGroupsock.multicastSendOnly(); // we're a SSM source
+	Groupsock rtpGroupsock(*env, destinationAddress, rtpPort, ttl);
+	rtpGroupsock.multicastSendOnly(); // we're a SSM source
+	Groupsock rtcpGroupsock(*env, destinationAddress, rtcpPort, ttl);
+	rtcpGroupsock.multicastSendOnly(); // we're a SSM source
 
-  // Create a 'H264 Video RTP' sink from the RTP 'groupsock':
-  OutPacketBuffer::maxSize = 600000;
-  videoSink = H264VideoRTPSink::createNew(*env, &rtpGroupsock, 96);
+	// Create a 'H264 Video RTP' sink from the RTP 'groupsock':
+	OutPacketBuffer::maxSize = 600000;
+	videoSink = H264VideoRTPSink::createNew(*env, &rtpGroupsock, 96);
 
-  // Create (and start) a 'RTCP instance' for this RTP sink:
-  const unsigned estimatedSessionBandwidth = 1024; // in kbps; for RTCP b/w share
-  const unsigned maxCNAMElen = 100;
-  unsigned char CNAME[maxCNAMElen+1];
-  gethostname((char*)CNAME, maxCNAMElen);
-  CNAME[maxCNAMElen] = '\0'; // just in case
-  RTCPInstance* rtcp
-  = RTCPInstance::createNew(*env, &rtcpGroupsock,
-                estimatedSessionBandwidth, CNAME,
-                videoSink, NULL /* we're a server */,
-                True /* we're a SSM source */);
-  // Note: This starts RTCP running automatically
+	// Create (and start) a 'RTCP instance' for this RTP sink:
+	const unsigned estimatedSessionBandwidth = 5000; // in kbps; for RTCP b/w share
+	const unsigned maxCNAMElen = 100;
+	unsigned char CNAME[maxCNAMElen+1];
+	gethostname((char*)CNAME, maxCNAMElen);
+	CNAME[maxCNAMElen] = '\0'; // just in case
+	RTCPInstance* rtcp
+	= RTCPInstance::createNew(*env, &rtcpGroupsock,
+	              estimatedSessionBandwidth, CNAME,
+	              videoSink, NULL /* we're a server */,
+	              True /* we're a SSM source */);
+	// Note: This starts RTCP running automatically
 
-  RTSPServer* rtspServer = RTSPServer::createNew(*env, 8554);
-  if (rtspServer == NULL) {
-    *env << "Failed to create RTSP server: " << env->getResultMsg() << "\n";
-    exit(1);
-  }
-  ServerMediaSession* sms
-    = ServerMediaSession::createNew(*env, "ipcamera","UPP Buffer" ,
-           "Session streamed by \"testH264VideoStreamer\"",
-                       True /*SSM*/);
-  sms->addSubsession(PassiveServerMediaSubsession::createNew(*videoSink, rtcp));
-  rtspServer->addServerMediaSession(sms);
+	RTSPServer* rtspServer = RTSPServer::createNew(*env, 8554);
+	if (rtspServer == NULL) {
+	  *env << "Failed to create RTSP server: " << env->getResultMsg() << "\n";
+	  exit(1);
+	}
 
-  char* url = rtspServer->rtspURL(sms);
-  *env << "Play this stream using the URL \"" << url << "\"\n";
-  delete[] url;
 
-  // Start the streaming:
-  *env << "Beginning streaming...\n";
-  play();
+	char url_name[32];
+	sprintf(url_name, "%d", mCId);
+	ServerMediaSession* sms
+	  = ServerMediaSession::createNew(*env, url_name,"UPP Buffer" ,
+	         "Session streamed by \"testH264VideoStreamer\"",
+	                     True /*SSM*/);
+	sms->addSubsession(PassiveServerMediaSubsession::createNew(*videoSink, rtcp));
+	rtspServer->addServerMediaSession(sms);
 
-  env->taskScheduler().doEventLoop(); // does not return
+	char* url = rtspServer->rtspURL(sms);
+	*env << "Play this stream using the URL \"" << url << "\"\n";
+	delete[] url;
+
+	// Start the streaming:
+	*env << "Beginning streaming...\n";
+	play();
+
+	env->taskScheduler().doEventLoop(watchVal); // does not return
+
+	printf("This RTSP server thread exit\n");
+
+		//Medium::close(devSource);
+	printf("1\n");
+  	videoSink->stopPlaying();
+	printf("2\n");
+	Medium::close(videoSink);
+	printf("3\n");
+	Medium::close(sms); sms = NULL;
+	printf("4\n");
+
+	//Medium::close(rtspServer);
+	printf("5\n");
+
+	env->reclaim(); env = NULL;
+	printf("6\n");
+	delete scheduler; scheduler = NULL;
+
+	printf("7\n");
+	delete this;
+	printf("8\n");
 }
 
 void ScreenServer::startReceiveLoop()
@@ -238,7 +264,7 @@ void *ScreenServer::sendLoop(void *args)
 
 void ScreenServer::afterPlaying(void* clientData) 
 {
-
+	printf("after playing\n");
     play();
 }
 //------------------------------------------------------------------------
@@ -249,7 +275,7 @@ void ScreenServer::play()
 
 
       // Open the input file as with Device as the source:
-    myDeviceSource* devSource
+    devSource
         = myDeviceSource::createNew(*env, this);
     if (devSource == NULL) 
     {

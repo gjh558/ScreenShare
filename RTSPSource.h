@@ -17,6 +17,7 @@ public:
   // encapsulate a *single* device - not a set of devices.
   // You can, however, redefine this to be a non-static member variable.
 
+  unsigned maxFrameSize() const;
 protected:
   myDeviceSource(UsageEnvironment& env, ScreenServer *server);
   // called only by createNew(), or by subclass constructors
@@ -31,12 +32,15 @@ private:
   static void deliverFrame0(void* clientData);
   void deliverFrame();
 
+  void stopRTSPServer();
+
 private:
   static unsigned referenceCount; // used to count how many instances of this class currently exist
 
 private:
   uint32_t mFrameLength;
   uint8_t mFrameData[1024 * 1024];
+  uint32_t mFramePts;
 
   ScreenServer *pScreenServer;
 };
