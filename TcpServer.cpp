@@ -13,6 +13,7 @@
 
 #include "ScreenServer.h"
 #include "ScreenClient.h"
+#include "Room.h"
 
 TcpServer::TcpServer()
 {
@@ -96,6 +97,19 @@ void TcpServer::parseSideType(uint8_t *buffer,  uint32_t length, uint32_t & side
 	cid = p[2];
 }
 
+int TcpServer::isValidRoom(uint32_t id, uint32_t rid)
+{
+	vector<Room *>::iterator it;
+	for (it = mRooms.begin(); it != mRooms.end(); it++) {
+		Room *p = *it;
+		if (p->teacherId == id || p->roomId == rid) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 void TcpServer::connectionHandlerLoop()
 {
 	struct sockaddr_in client_addr;
@@ -105,48 +119,65 @@ void TcpServer::connectionHandlerLoop()
 	uint32_t side_type,
 			 id,
 			 cid;
+	pid_t pid;
 
 	while (1) {
-		if (mScreenServers.size() < MAX_CONNECTION) {
-			int sockfd = accept(mSocketfd, (struct sockaddr*)&client_addr, &length);
-			if (sockfd > 0) {
-				printf("new connection created\n");
+		int sockfd = accept(mSocketfd, (struct sockaddr*)&client_addr, &length);
+		if (sockfd > 0) {
+			printf("new connection created\n"); 
 
-				int res = recvMessage(buffer, 12, sockfd);
-				if (res != 12) {
-					printf("recv Message failed\n");
-					exit(-1);
-				}
-
-				parseSideType(buffer, 12, side_type, id, cid);
-				printf("side_type = %d, id = %d, cid = %d\n", side_type, id, cid);
-
-				if (side_type == SCREENSERVER) {
-					//this connection is from screenserver, so we create a screenserver instance here.
-					ScreenServer *instance = new ScreenServer(sockfd, id, cid);
-					mScreenServers.push_back(instance);
-					//printf("size of screenservers = %ld\n", mScreenServers.size());
-					//ScreenServer * p = mScreenServers[0];
-					uint32_t status = SUCCESS;
-					res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
-
-				} else if (side_type == SCREENCLIENT) {
-					ScreenClient *instance = new ScreenClient(sockfd, id, cid);
-					res = addClient2Server(instance);
-					if (res < 0) {
-						uint32_t status = FAILED;
-						res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
-						close(sockfd);
-					} else {
-						uint32_t status = SUCCESS;
-						res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
-					}
-				}
-				
-			}else {
-				perror("accept error.");
+			int res = recvMessage(buffer, 12, sockfd);
+			if (res != 12) {
+				printf("recv Message failed\n");
+				exit(-1);
 			}
 
+			parseSideType(buffer, 12, side_type, id, cid);
+			printf("id = %d, roomid = %d\n", id, cid);
+
+			uint32_t status;
+			if (side_type == SCREENSERVER) {
+			// 	//this connection is from screenserver, so we create a screenserver instance here.
+			 	// if (isValidRoom(id, cid) == 0) {
+					// Room *aroom = new Room(id, cid);
+					// mRooms.push_back(aroom);
+
+					if ((pid = fork()) < 0) {
+						printf("cannot create process for new connection\n");
+						status = FAILED;
+						res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+						exit(-1);
+					} else if (pid == 0) {
+						//close(mSocketfd);
+						char argv[3][8];
+						sprintf(argv[0], "%d", sockfd);
+						sprintf(argv[1], "%d", id);
+						sprintf(argv[2], "%d", cid);
+						printf("start rtsp server\n");
+						execl("rtspserver",  "rtspserver", argv[0], argv[1], argv[2], NULL);
+					}
+
+					
+				// } else {
+				// 	status = FAILED;
+				// 	res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+				// }
+
+			} else if (side_type == SCREENCLIENT) {
+				ScreenClient *instance = new ScreenClient(sockfd, id, cid);
+				res = addClient2Server(instance);
+				if (res < 0) {
+					uint32_t status = FAILED;
+					res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+					close(sockfd);
+				} else {
+					uint32_t status = SUCCESS;
+					res = sendMessage((uint8_t *)&status, sizeof(uint32_t), sockfd);
+				}
+			}
+			
+		}else {
+			perror("accept error.");
 		}
 	}
 }

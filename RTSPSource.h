@@ -4,12 +4,14 @@
 #include <FramedSource.hh>
 #include <queue>
 #include "Frame.h"
+#include "BaseSocket.h"
 
 class ScreenServer;
 
 class myDeviceSource: public FramedSource {
 public:
   static myDeviceSource* createNew(UsageEnvironment& env, ScreenServer *server);
+  static myDeviceSource* createNew(UsageEnvironment& env, int sock);
 
 public:
   static EventTriggerId eventTriggerId;
@@ -20,6 +22,7 @@ public:
   unsigned maxFrameSize() const;
 protected:
   myDeviceSource(UsageEnvironment& env, ScreenServer *server);
+  myDeviceSource(UsageEnvironment& env, int sock);
   // called only by createNew(), or by subclass constructors
   virtual ~myDeviceSource();
 
@@ -43,6 +46,9 @@ private:
   uint32_t mFramePts;
 
   ScreenServer *pScreenServer;
+
+  int mSockfd;
+  BaseSocket mBaseSocket;
 };
 
 #endif

@@ -21,12 +21,36 @@ myDeviceSource::createNew(UsageEnvironment& env, ScreenServer *server)
   return new myDeviceSource(env, server);
 }
 
+myDeviceSource*
+myDeviceSource::createNew(UsageEnvironment& env, int sock)
+{
+  return new myDeviceSource(env, sock);
+}
+
 EventTriggerId myDeviceSource::eventTriggerId = 0;
 
 unsigned myDeviceSource::referenceCount = 0;
 
 myDeviceSource::myDeviceSource(UsageEnvironment& env, ScreenServer *server):
     pScreenServer(server),
+    FramedSource(env)
+{ 
+  if (referenceCount == 0) 
+  {
+      
+  }
+  
+  ++referenceCount;
+
+
+  if (eventTriggerId == 0) 
+  {
+    eventTriggerId = envir().taskScheduler().createEventTrigger(deliverFrame0);
+  }
+}
+
+myDeviceSource::myDeviceSource(UsageEnvironment& env, int sock):
+    mSockfd(sock),
     FramedSource(env)
 { 
   if (referenceCount == 0) 
@@ -68,7 +92,6 @@ int loop_count;
 
 void myDeviceSource::doGetNextFrame() 
 {
-  printf("get next frame\n");
   int ret;
   //ret = pScreenServer->recvMessage((uint8_t *) &mFrameLength, sizeof(uint32_t), pScreenServer->getSockfd());
 
@@ -84,18 +107,18 @@ void myDeviceSource::doGetNextFrame()
   //   printf("recv video pts from screen server failed\n");
   //   return;
   // }
-  // printf("recv pts = %d\n", mFramePts);
+   //printf("recv ...\n");
 
-  ret = pScreenServer->recvMessage(mFrameData, 2048, pScreenServer->getSockfd());
+  ret = mBaseSocket.recvMessage(mFrameData, 2048, mSockfd);
   if (ret != 2048)
   {
-    printf("recv video data from screen server failed\n");
+    printf("close current rtsp server\n");
     stopRTSPServer();
-    return;
+    exit(-1);
   }
 
   mFrameLength = ret;
-  printf("mFrameLength = %d\n", mFrameLength);
+  //printf("mFrameLength = %d\n", mFrameLength);
   //fwrite(mFrameData, mFrameLength, 1, fp);
   deliverFrame();
 }

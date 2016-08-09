@@ -22,6 +22,7 @@ using namespace std;
  */
 //class ScreenServer;
 class ScreenClient;
+class Room;
 
 class TcpServer : public BaseSocket{
 public:
@@ -37,9 +38,11 @@ private:
 	int addClient2Server(ScreenClient *client);
 	//int sendMessage(const unsigned char *buffer_void, uint64_t buffer_size, int sockfd);
 	//int recvMessage(void *buffer_void, uint64_t buffer_size, int sockfd);
+	int isValidRoom(uint32_t id, uint32_t rid);
 private:
 	vector<ScreenServer *> mScreenServers;
 	int mSocketfd;
+	vector<Room *> mRooms;
 		
 };
 
